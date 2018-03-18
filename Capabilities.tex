@@ -1,0 +1,391 @@
+\documentclass[usenames,dvipsnames,10pt]{beamer}
+\usepackage{xcolor}
+\usetheme{Warsaw}
+\usecolortheme{dove}
+\usefonttheme{structuresmallcapsserif}
+\useoutertheme{infolines}
+\setbeamercolor{alerted text}{fg=ForestGreen}
+\setbeamerfont{alerted text}{series=}
+
+\usepackage[utf8]{inputenc}
+\usepackage[german]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{multicol}
+\usepackage{setspace}
+%\setbeamercovered{transparent} 
+%\setbeamertemplate{navigation symbols}{} 
+\usepackage{minted}
+
+\usepackage{listings}
+\lstset{escapeinside={<@}{@>}}
+\lstdefinestyle{Bash}
+{language=bash,
+keywordstyle=\color{blue},
+basicstyle=\ttfamily,
+morekeywords={peter@kbpet},
+commentstyle=\color{brown},
+morekeywords=[2]{peter@kbpet:},
+keywordstyle=[2]{\color{red}},
+alsoletter={:~$},
+literate={\$}{{\textcolor{BrickRed}{\$}}}1 
+         {:}{{\textcolor{BrickRed}{:}}}1
+         {~}{{\textcolor{BrickRed}{\textasciitilde}}}1,
+} 
+%$
+
+\setbeamerfont{itemize/enumerate subbody}{size=\normalsize} %to set the body size
+\setbeamerfont{itemize/enumerate subsubbody}{size=\normalsize} %to set the body size
+\setbeamertemplate{itemize subitem}{\normalsize\raise1.25pt\hbox{\donotcoloroutermaths$\blacktriangleright$}}  %to set the symbol size
+
+
+\newcommand{\mysection}[1]{{\bf #1\\\medskip}}
+\newcommand{\mysubsection}[1]{\medskip #1\\}
+\newcommand{\mybox}{\scalebox{0.5}{\fbox{}}}
+\newcommand{\boxes}{
+\scalebox{0.5}{\fbox{1}\fbox{2}\fbox{3}…\fbox{37}} \\
+}
+%\newcommand{\boxes}{{\TINY
+%\begin{tabular}{|c|c|c|c|c|}
+%\hline 
+%\rule[-1ex]{0pt}{2.5ex}   &   &   &   &  \\ 
+%\hline 
+%\rule[-1ex]{0pt}{2.5ex}   &   &   &   &   \\ 
+%\hline 
+%\end{tabular} 
+%}}
+
+\usepackage{caption}
+
+\author[Michael F. Schönitzer]{Michael F. Schönitzer \\ \href{mailto:michael@schoenitzer.de}{michael@schoenitzer.de}}
+\title{Capabilities}
+\subtitle{Das vergessene Linux-Security-Feature}
+
+%\logo{} 
+%\institute{} 
+\date[22. April 2017]{Augsburger Linux-Infotag \\ 22. April 2017}
+\begin{document}
+
+\begin{frame}[plain]
+\titlepage
+\end{frame}
+
+
+\begin{frame}[<+->]{Der Root User}
+	Traditionelles Rechtesystem von UNIX:
+	\begin{itemize}
+	\item User root mit $UID = 0$ darf alles.
+	\item Alle anderen User dürfen \glqq nichts\grqq.
+	\end{itemize}
+	
+	\vspace{1cm}
+	
+	\begin{block}{Beispiel: NTP-Daemon}
+	\begin{itemize}
+	\item Muss Zeit setzen \& in Echtzeit arbeiten.
+		\begin{itemize}
+		\item[$\Rightarrow$] Muss mit Root-Rechten laufen
+		\begin{itemize}
+		\item[$\Rightarrow$] Darf auch Systemdateien ändern, Festplatten formatieren, Kernelmodule laden, Firewalls verstellen, Prozesse killen…
+		\end{itemize}
+		\end{itemize}
+	\end{itemize}
+	\end{block}
+\end{frame}
+
+\begin{frame}{Capabilities}
+	\begin{block}{Idee}
+	Trenne die Rechte feingranularer auf Capabilities auf
+	\end{block}
+	\pause
+	\vfill
+	\begin{block}{Beispiel: NTP-Daemon}
+	\begin{itemize}
+		\item CAP\_SYS\_NICE \\
+		Erlaubt die Prozess Priorität zu erhöhen, etc.
+		\item CAP\_SYS\_TIME \\
+		Erlaubt das Verstellen der Uhrzeit		
+	\end{itemize}
+	\end{block}
+\end{frame}
+
+\begin{frame}[<+->]{Geschichte}
+	\begin{itemize}
+	\item 1997: POSIX 1003.1e – withdrawn
+	\item Linux 2.1
+	\item Linux 2.2.11: Capability bounding set
+	\item Linux 2.6.24: File Capabilities
+	\item Linux 2.6.25: Capability bounding set auf Prozessebene
+	\item Linux 2.6.26: Securebits
+	\item Linux 2.6.33: Filecapabilities nicht mehr Optional
+	\item Linux 3.2%: /proc/sys/kernel/cap\_last\_cap
+	\item Linux 3.8
+	\item Linux 4.3: Ambient Capabilities
+	\end{itemize}
+\end{frame}
+% Notes:
+% Support in ls:
+%% https://git.savannah.gnu.org/gitweb/?p=coreutils.git;a=commit;h=84f6abfe00b4ab533145623638b417a2221f9c75
+
+
+\begin{frame}[t]{Theorie}
+	\setstretch{0.4}
+	\footnotesize
+	
+	\begin{multicols}{2}
+	
+	\mysection{Prozess}
+	
+	\onslide<2->{\alert<2>{
+	\mysubsection{\makebox[12ex][l]{Permitted} $P$}
+	\boxes
+	}}
+	
+	\onslide<1->{
+	\mysubsection{\makebox[12ex][l]{Effective} \only<1>{$E$}\onslide<2->{\alert<2>{$E\subseteq P$}}}
+	\boxes
+	}
+	
+	\onslide<5->{\alert<5>{
+	\mysubsection{\makebox[12ex][l]{Inheritable} $I$}
+	\boxes
+	}}
+	
+	\onslide<8->{\alert<8>{
+	\mysubsection{\makebox[12ex][l]{Ambient} $A$}
+	\boxes
+	}}
+	
+	\columnbreak
+	\onslide<3->{\alert<3>{
+	\mysection{Datei (XAttr)}
+	
+	\mysubsection{\makebox[12ex][l]{Permitted} $P_{Datei}$}
+	\boxes
+	
+	\mysubsection{\makebox[12ex][l]{Effective} $E_{Datei}$}
+	\mybox
+	}}
+	
+	\onslide<5->{\alert<5>{
+	\mysubsection{\makebox[12ex][l]{Inheritable} $I_{Datei}$}
+	\boxes
+	}}
+	
+	\vfill\onslide<13->{\onslide<1>{*}} % superdirty hack
+	\end{multicols}
+	
+	{
+	\hfill
+	\begin{minipage}{0.85\textwidth}
+	\onslide<4->{\alert<4>{
+	\mysection{Kindsprozess}
+	
+	\mysubsection{\makebox[12ex][l]{Permitted}
+	{$P_{Kind} = \only<-11>{P_{Datei}}\only<12->{\alert<12>{\left( P_{Datei} \cap Bset \right)}} \only<7->{\alert<7>{\cup \left( I \cap I_{Datei} \right)}} \only<10->{\alert<10>{\cup A_{Kind}}}$}
+	}
+	\boxes
+	
+	\mysubsection{\makebox[12ex][l]{Effective}
+	   {$E_{Kind} = E_{Datei} \ ? \ P_{Kind} \only<10->{\alert<10>{\ :\  A_{Kind}}}$}}
+	\boxes
+	}}
+	
+	\onslide<6->{\alert<6>{
+	\mysubsection{\makebox[12ex][l]{Inheritable} $I_{Kind} = I$}
+	\boxes
+	}}
+	
+	\onslide<9->{\alert<9>{
+	\mysubsection{\makebox[12ex][l]{Ambient} $ A_{Kind} = \mathrm{(Datei\ priviligiert)} \ ? \ 0 \ : \ A$}
+	\boxes
+	}}
+	\end{minipage}
+	\hfill
+	}
+\end{frame}
+
+
+\begin{frame}{Securebits flags \& UID changes}
+	
+	\begin{itemize}[<+->]
+	\item \makebox[17ex]{Exec mit SUID bit} $\qquad \Rightarrow \qquad P_{Inheritable} = P_{Effective} = P_{Permitted} = 1$
+	\item \makebox[17ex]{Exec mit UID $=0$\hfill} $\qquad \Rightarrow \qquad P_{Inheritable} = P_{Effective} = P_{Permitted} = 1$
+	\item \makebox[17ex]{UID $=0 \;\rightarrow\;\; >0$} $\qquad \Rightarrow \qquad P_{Effective} = P_{Permitted} = 0$ 
+	\item \makebox[17ex]{UID $>0 \;\rightarrow\;\; =0$} $\qquad \Rightarrow \qquad P_{Effective} = P_{Permitted}$ 
+	\end{itemize}
+	
+	\begin{onlyenv}<5>
+	Deaktivierbar durch:
+	
+		\begin{itemize}
+		\item SECBIT\_KEEP\_CAPS
+		\item SECBIT\_NO\_SETUID\_FIXUP
+		\item SECBIT\_NOROOT
+		\item SECBIT\_NO\_CAP\_AMBIENT\_RAISE
+		\end{itemize}
+	\end{onlyenv}
+	\begin{onlyenv}<6>
+	Arretierbar durch:
+	
+		\begin{itemize}
+		\item SECBIT\_KEEP\_CAPS{\color{red}\_LOCK}
+		\item SECBIT\_NO\_SETUID\_FIXUP{\color{red}\_LOCK}
+		\item SECBIT\_NOROOT{\color{red}\_LOCK}
+		\item SECBIT\_NO\_CAP\_AMBIENT\_RAISE{\color{red}\_LOCK}
+		\end{itemize}
+	\end{onlyenv}
+
+\end{frame}
+
+
+\begin{frame}[fragile]{capability-awareness}
+	\begin{itemize}[<+->]
+	\item capability-dumb binaries
+	\item capability-aware binaries
+	\end{itemize}
+	
+	\usemintedstyle{tango}
+	
+	\begin{onlyenv}<1>
+	Beispiel: 
+	
+	\begin{lstlisting}[style=Bash]
+# old system
+$ ls -l /usr/bin/ping
+<@\textcolor{black}{-rwsr-xr-x 1 root root 60K 16. Nov 08:57 /usr/bin/ping}@>
+
+# modern system
+$ ls -l /usr/bin/ping
+<@\textcolor{black}{-rwxr-xr-x 1 root root 60K 16. Nov 08:57 /usr/bin/ping}@>
+$ getcap /usr/bin/ping
+/usr/bin/ping = cap_net_raw+ep
+	\end{lstlisting}
+	\end{onlyenv}
+	%$
+	
+	\begin{onlyenv}<2>
+	Beispiel:
+	
+	\begin{listing}[H]
+	\captionsetup{labelformat=empty}
+	
+	\caption{NTPsec: \texttt{ntpd/ntp\_sandbox.c}}
+	\begin{minted}[fontsize=\footnotesize]{c}
+	#  ifdef HAVE_LINUX_CAPABILITY
+	   // ...
+	   cap_t caps;
+	   char *captext;
+	
+	   captext = want_dynamic_interface_tracking
+	      ? "cap_sys_nice,cap_sys_time,cap_net_bind_service=pe"
+	      : "cap_sys_nice,cap_sys_time=pe";
+	   caps = cap_from_text(captext);
+	   // ...
+	   cap_free(caps);
+	#  endif  /* HAVE_LINUX_CAPABILITY */
+	\end{minted}
+	\end{listing}
+	
+	\end{onlyenv}
+
+\end{frame}
+% END Cap Awareness
+
+\begin{frame}{Probleme}
+	\begin{block}{CAP\_SYS\_ADMIN}
+	\begin{quote}
+	It can plausibly be called \glqq the new root\grqq, since on the
+	one hand, it confers a wide range of powers, and on the other hand, its broad
+	scope means that this is the capability that is required by  many  privileged programs.
+		\end{quote}
+	\rightline{{\rm --- man CAPABILITIES(7)}}
+	\end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Probleme}
+	\begin{listing}[H]
+	\captionsetup{labelformat=empty}
+	
+	\begin{minted}[fontsize=\footnotesize]{c}
+	uid_t euid=geteuid();
+	if(euid != 0)
+	{
+	  // Tell user to run app as root, then exit.
+	}
+
+	\end{minted}
+	\end{listing}
+\end{frame}
+
+
+\begin{frame}[<+->]{Probleme}
+\begin{itemize}
+	\item Root User ist Besitzer aller Systemdateien: /etc/shadow, /usr/bin/su, …
+	\begin{itemize}
+	\item[$\Rightarrow$] Root ohne Capabilities ist exploitable!
+	\begin{itemize}
+			\item[$\Rightarrow$] Verwende User mit $UID > 0$!
+	\end{itemize}
+	\end{itemize}
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]{Probleme}
+	Etwa 20 der Capabilities sind Exploitable und erlauben es volle Rechte zu erlangen!\pause
+	
+	Einfaches Beispiel:
+	
+	CAP\_FOWNER
+	
+	\begin{minted}{bash}
+	$ chown hacker /etc/shadow
+	$ chmod 777 /etc/shadow
+	$ vim /etc/shadow
+	$ su
+	\end{minted}
+	\pause
+	Betrifft vor allem capability-dump binaries.
+	\pause
+	Einschränkbar durch Capability-aware binaries, strengere Dateirechte, capability bounding set, Grsec, Selinux, etc…
+\end{frame}
+
+\begin{frame}[fragile]{Praktisch}
+	\begin{itemize}[<+->]
+	\item getcap: Capabilities einer Datei anzeigen
+	\item setcap: Capabilities einer Datei setzen
+	\item filecap: Capabilities aller Dateien anzeigen
+	\item getpcaps:  Capabilities eines Prozesses anzeigen
+	\item pscap: Capabilities aller Prozesse anzeigen
+	\item capsh: Wrapper, um ein Shell mit Capabilities zu setzen
+	\item captest: Testet die Capabilities
+	\item libcap: C-libary für Capability-aware libaries
+	
+	\item ls – Dateien mit Capabilities sind farbig! \pause – Außer auf Debian! \pause
+	\item systemd – Capabilities können in Unit-Files spezifiziert werden
+	\item pam\_cap – inheritable capabilities beim Anmelden setzen
+	\item Docker – nutzt intensiv die Capabilities, anpassbar
+	\end{itemize}
+	
+	\vfill
+	\begin{visibleenv}<3>
+	\begin{lstlisting}[style=Bash]
+	$ find / -user root -perm -4000
+	
+	$ filecap -a
+	\end{lstlisting}
+	\end{visibleenv}
+\end{frame}
+
+\begin{frame}
+\begin{center}
+	Vielen Dank für Ihre Aufmerksamkeit!
+\end{center}
+\end{frame}
+
+
+\end{document}
